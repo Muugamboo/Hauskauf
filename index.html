@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hauskauf Dénia</title>
+<meta name="description" content="Sparplan und Hypothekenrechner für eine Wohnung in Dénia / Calculadora de ahorro e hipoteca para un piso en Dénia">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#f3f6f6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1517" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Hauskauf">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: Sparplan-Werkbank – links Haushalt & Annahmen, rechts Zieldatum + Spar-Kurve; darunter Orte und Förderwege im Vergleich. Zweisprachig DE/ES. */
+:root{
+  --bg:#f3f6f6; --surface:#ffffff; --ink:#152226; --muted:#5a6b70; --line:#dbe3e4;
+  --accent:#16708a; --accent-soft:#e0eff3; --need:#c26a2e;
+  --ok:#1d8a55; --ok-soft:#e1f3ea; --warn:#b7740b; --warn-soft:#fbf0dc; --bad:#c23b3b; --bad-soft:#f9e3e3;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-num:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1517; --surface:#162024; --ink:#e4ecee; --muted:#93a5aa; --line:#27363b;
+  --accent:#5cb6d1; --accent-soft:#16303a; --need:#e39a62;
+  --ok:#4cc58a; --ok-soft:#14301f; --warn:#e3a740; --warn-soft:#352812; --bad:#ef7a7a; --bad-soft:#3a1b1b;
+  color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0e1517; --surface:#162024; --ink:#e4ecee; --muted:#93a5aa; --line:#27363b;
+  --accent:#5cb6d1; --accent-soft:#16303a; --need:#e39a62;
+  --ok:#4cc58a; --ok-soft:#14301f; --warn:#e3a740; --warn-soft:#352812; --bad:#ef7a7a; --bad-soft:#3a1b1b;
+  color-scheme:dark;}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:max(20px, env(safe-area-inset-top, 0px));padding-bottom:max(48px, env(safe-area-inset-bottom, 0px));margin:0;
+  -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
+.hactions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+h1{font-family:var(--f-display);font-size:clamp(26px,4vw,36px);line-height:1.1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);margin:6px 0 0;max-width:68ch}
+h2{font-family:var(--f-display);font-size:19px;margin:0;text-wrap:balance}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0;font-weight:700}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+button,select{font:inherit}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer}
+.btn-ghost:hover{color:var(--ink);border-color:var(--muted)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:24px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}.results{order:-1;position:static!important}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.inputs{display:flex;flex-direction:column;gap:16px;min-width:0}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+@media (max-width:480px){.fields{grid-template-columns:minmax(0,1fr)}}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field.full{grid-column:1/-1}
+.field label{font-size:13.5px;font-weight:600}
+.hint{font-size:12.5px;color:var(--muted);line-height:1.35}
+.inbox{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow:hidden}
+.inbox:focus-within{border-color:var(--accent)}
+.inbox input{border:0;background:transparent;color:var(--ink);font-family:var(--f-num);font-size:15px;padding:8px 10px;width:100%;min-width:0;outline:none}
+.inbox input[type=text]{font-family:var(--f-body)}
+.inbox span{padding:0 10px;color:var(--muted);font-size:13px;white-space:nowrap}
+select{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px 10px}
+input[type=range]{width:100%;accent-color:var(--accent);margin:2px 0 0}
+.toggle{display:flex;gap:8px;align-items:flex-start;font-size:14px}
+.toggle input{margin-top:4px;accent-color:var(--accent)}
+.mode{display:flex;gap:4px;padding:3px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.mode label{flex:1;text-align:center;padding:7px 10px;border-radius:7px;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted);position:relative}
+.mode input{position:absolute;opacity:0;pointer-events:none}
+.mode label:has(input:checked){background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.mode label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:1px}
+.mode.lang{background:var(--surface)}
+.mode.lang label{padding:5px 12px;font-size:13px;letter-spacing:.04em}
+.mode.lang label:has(input:checked){background:var(--accent-soft);box-shadow:none}
+.who{display:flex;align-items:center;gap:8px}
+.who b{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.who::after{content:"";flex:1;border-top:1px solid var(--line)}
+
+.results{position:sticky;top:max(12px, env(safe-area-inset-top, 0px));display:flex;flex-direction:column;gap:16px;min-width:0}
+.big{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:520px){.big{grid-template-columns:minmax(0,1fr)}}
+.kpi{border-radius:10px;padding:12px 14px;background:var(--bg);display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi.main{background:var(--accent-soft)}
+.kpi .v{font-family:var(--f-num);font-size:clamp(19px,2.6vw,24px);font-weight:600;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi .l{font-size:13px;color:var(--muted)}
+.kpi .s{font-size:12.5px;color:var(--muted)}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-family:var(--f-num);font-size:11px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:3px}
+.rows{display:flex;flex-direction:column}
+.row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14.5px}
+.row:last-child{border-bottom:0}
+.row .num{white-space:nowrap}
+.row.total{font-weight:700;border-bottom:0;border-top:1px solid var(--ink);margin-top:2px;padding-top:8px}
+.row.sub{font-size:13.5px;color:var(--muted)}
+.row.sub .lim{font-weight:700;color:var(--ink)}
+.neg{color:var(--bad)}
+.msg{font-size:13.5px;border-radius:8px;padding:9px 12px;line-height:1.4}
+.msg.warn{background:var(--warn-soft);border-left:3px solid var(--warn)}
+.msg.bad{background:var(--bad-soft);border-left:3px solid var(--bad)}
+.msg.ok{background:var(--ok-soft);border-left:3px solid var(--ok)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap;font-family:var(--f-body)}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:620px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+td:first-child,td.txt{font-family:var(--f-body)}
+tr.cur td{background:var(--accent-soft)}
+tbody tr{cursor:pointer}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.info .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.info .card h3{color:var(--ink)}
+.info .card p{margin:0;color:var(--muted)}
+.foot{font-size:12.5px;color:var(--muted);line-height:1.5;max-width:90ch}
+.foot p{margin:0 0 6px}
+</style>
+<style>@media (pointer:coarse){input,select,textarea{font-size:16px}.btn-ghost{min-height:36px}}</style>
+
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1 data-i18n="h1">Hauskauf Dénia</h1>
+      <p class="sub" data-i18n="sub"></p>
+    </div>
+    <div class="hactions">
+      <div class="mode lang" role="radiogroup" aria-label="Sprache / Idioma">
+        <label><input type="radio" name="lang" id="langDe" value="de"> DE</label>
+        <label><input type="radio" name="lang" id="langEs" value="es"> ES</label>
+      </div>
+      <button class="btn-ghost" id="exportBtn" type="button" data-i18n="exportBtn"></button>
+      <button class="btn-ghost" id="reset" type="button" data-i18n="reset"></button>
+    </div>
+  </header>
+  <div id="exportBox" hidden style="display:flex;flex-direction:column;gap:6px"><span class="hint" id="exportMsg"></span><textarea id="exportCode" readonly style="width:100%;min-height:60px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:var(--f-num);font-size:12px;padding:8px 10px"></textarea></div>
+
+  <div class="grid">
+    <div class="inputs">
+      <section class="panel">
+        <h2 data-i18n="pSave"></h2>
+        <div class="who"><b data-i18n="who1"></b></div>
+        <div class="fields">
+          <div class="field"><label for="inc1" data-i18n="net"></label><div class="inbox"><input id="inc1" type="number" step="10" min="0"><span>€</span></div></div>
+          <div class="field"><label for="exp1" data-i18n="exp"></label><div class="inbox"><input id="exp1" type="number" step="10" min="0"><span>€</span></div><span class="hint" data-i18n="exp1Hint"></span></div>
+          <div class="field"><label for="etf" data-i18n="etf"></label><div class="inbox"><input id="etf" type="number" step="10" min="0"><span>€</span></div></div>
+          <div class="field"><label for="play" data-i18n="play"></label><div class="inbox"><input id="play" type="number" step="10" min="0"><span>€</span></div><input type="range" id="playR" min="0" max="400" step="10" aria-label="Spielgeld"></div>
+          <label class="toggle field full"><input type="checkbox" id="etfIn"> <span data-i18n="etfIn"></span></label>
+        </div>
+        <div class="who"><b data-i18n="who2"></b></div>
+        <div class="fields">
+          <div class="field"><label for="inc2" data-i18n="net"></label><div class="inbox"><input id="inc2" type="number" step="10" min="0"><span>€</span></div></div>
+          <div class="field"><label for="exp2" data-i18n="exp"></label><div class="inbox"><input id="exp2" type="number" step="10" min="0"><span>€</span></div><span class="hint" data-i18n="exp2Hint"></span></div>
+          <div class="field"><label for="start2" data-i18n="start2"></label><div class="inbox"><input id="start2" type="number" step="1" min="0"><span data-i18n="uMonths"></span></div></div>
+          <div class="field"><label for="grow" data-i18n="grow"></label><div class="inbox"><input id="grow" type="number" step="0.5" min="0"><span>%</span></div></div>
+        </div>
+        <div class="who"><b data-i18n="who3"></b></div>
+        <div class="fields">
+          <div class="field"><label for="savings" data-i18n="savings"></label><div class="inbox"><input id="savings" type="number" step="500" min="0"><span>€</span></div></div>
+          <div class="field"><label for="yield" data-i18n="yield"></label><div class="inbox"><input id="yield" type="number" step="0.25" min="0"><span data-i18n="uPa"></span></div></div>
+          <div class="field"><label for="carMonthly" data-i18n="carMonthly"></label><div class="inbox"><input id="carMonthly" type="number" step="10" min="0"><span>€</span></div><span class="hint" data-i18n="carMonthlyHint"></span></div>
+          <div class="field"><label for="carDown" data-i18n="carDown"></label><div class="inbox"><input id="carDown" type="number" step="500" min="0"><span>€</span></div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 data-i18n="pFlat"></h2>
+        <div class="mode" role="radiogroup">
+          <label><input type="radio" name="mode" id="modeSqm" value="sqm"> <span data-i18n="modeSqm"></span></label>
+          <label><input type="radio" name="mode" id="modeListing" value="listing"> <span data-i18n="modeListing"></span></label>
+        </div>
+        <div class="fields">
+          <div class="field full" id="fListName"><label for="listName" data-i18n="listName"></label><div class="inbox"><input id="listName" type="text" maxlength="80" data-i18n-ph="listNamePh"></div></div>
+          <div class="field full" id="fListing"><label for="listing" data-i18n="listing"></label><div class="inbox"><input id="listing" type="number" step="1000" min="0"><span>€</span></div><span class="hint" data-i18n="listingHint"></span></div>
+          <div class="field full" id="fPlace"><label for="place" data-i18n="place"></label><select id="place"></select><span class="hint" id="placeHint"></span></div>
+          <div class="field" id="fSqm"><label for="sqm" data-i18n="sqm"></label><div class="inbox"><input id="sqm" type="number" step="5" min="30"><span>m²</span></div><span class="hint" data-i18n="sqmHint"></span></div>
+          <div class="field" id="fPpsqm"><label for="ppsqm" data-i18n="ppsqm"></label><div class="inbox"><input id="ppsqm" type="number" step="50" min="0"><span>€/m²</span></div></div>
+          <div class="field"><label for="priceGrow" data-i18n="priceGrow"></label><div class="inbox"><input id="priceGrow" type="number" step="0.5"><span>%</span></div><span class="hint" data-i18n="priceGrowHint"></span></div>
+          <div class="field"><label for="reserve" data-i18n="reserve"></label><div class="inbox"><input id="reserve" type="number" step="500" min="0"><span>€</span></div><span class="hint" data-i18n="reserveHint"></span></div>
+          <div class="field"><label for="upkeep" data-i18n="upkeep"></label><div class="inbox"><input id="upkeep" type="number" step="10" min="0"><span data-i18n="uPerMonth"></span></div></div>
+          <div class="field"><label for="rent" data-i18n="rent"></label><div class="inbox"><input id="rent" type="number" step="10" min="0"><span data-i18n="uPerMonth"></span></div></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 data-i18n="pLoan"></h2>
+        <div class="fields">
+          <div class="field full"><label for="scen" data-i18n="scen"></label><select id="scen"></select><span class="hint" id="scenHint"></span></div>
+          <div class="field"><label for="mrate" data-i18n="mrate"></label><div class="inbox"><input id="mrate" type="number" step="0.1" min="0"><span data-i18n="uPa"></span></div><span class="hint" data-i18n="mrateHint"></span></div>
+          <div class="field"><label for="years" data-i18n="years"></label><div class="inbox"><input id="years" type="number" step="5" min="5" max="40"><span data-i18n="uYears"></span></div></div>
+          <div class="field"><label for="dti" data-i18n="dti"></label><div class="inbox"><input id="dti" type="number" step="1" min="20" max="45"><span>%</span></div><span class="hint" data-i18n="dtiHint"></span></div>
+          <div class="field"><label for="fees" data-i18n="fees"></label><div class="inbox"><input id="fees" type="number" step="0.25" min="0"><span data-i18n="uOfPrice"></span></div></div>
+          <div class="field full"><label for="tcMode" data-i18n="tcMode"></label><select id="tcMode"></select><span class="hint" data-i18n="tcModeHint"></span></div>
+          <label class="toggle field full"><input type="checkbox" id="u35"> <span data-i18n="u35"></span></label>
+        </div>
+      </section>
+    </div>
+
+    <aside class="results panel" aria-live="polite">
+      <h3 data-i18n="rHead"></h3>
+      <div class="big">
+        <div class="kpi main"><span class="l" data-i18n="kWhenL"></span><span class="v" id="kWhen">–</span><span class="s" id="kWhenS"></span></div>
+        <div class="kpi"><span class="l" data-i18n="kPriceL"></span><span class="v" id="kPrice">–</span><span class="s" id="kPriceS"></span></div>
+        <div class="kpi"><span class="l" data-i18n="kRateL"></span><span class="v" id="kRate">–</span><span class="s" id="kRateS"></span></div>
+      </div>
+      <svg class="chart" id="chart" viewBox="0 0 640 260" role="img"></svg>
+      <div class="legend"><span><i style="background:var(--accent)"></i><span data-i18n="legSav"></span></span><span><i style="background:var(--need)"></i><span data-i18n="legNeed"></span></span></div>
+      <div class="rows" id="rows"></div>
+      <div id="msgs" style="display:flex;flex-direction:column;gap:8px"></div>
+    </aside>
+  </div>
+
+  <section class="panel">
+    <h2 data-i18n="tPlaces"></h2>
+    <p class="hint" style="margin:0" data-i18n="tPlacesHint"></p>
+    <div class="tablewrap"><table id="placeTable"><thead><tr><th data-i18n="thPlace"></th><th>€/m²</th><th data-i18n="thPriceToday"></th><th data-i18n="thEquity"></th><th data-i18n="thReady"></th><th data-i18n="thRate"></th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel">
+    <h2 data-i18n="tScens"></h2>
+    <p class="hint" style="margin:0" data-i18n="tScensHint"></p>
+    <div class="tablewrap"><table id="scenTable"><thead><tr><th data-i18n="thWay"></th><th data-i18n="thStatus"></th><th data-i18n="thBankPct"></th><th data-i18n="thEquity"></th><th data-i18n="thReady"></th><th data-i18n="thMonthly"></th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:12px">
+    <h2 data-i18n="infoHead"></h2>
+    <div class="info">
+      <div class="card"><h3>Tu Casa</h3><p data-i18n="infoTuCasa"></p></div>
+      <div class="card"><h3>Aval ICO</h3><p data-i18n="infoIco"></p></div>
+      <div class="card"><h3 data-i18n="infoIvfH"></h3><p data-i18n="infoIvf"></p></div>
+      <div class="card"><h3 data-i18n="infoElecH"></h3><p data-i18n="infoElec"></p></div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <p data-i18n-html="foot1"></p>
+    <p data-i18n-html="foot2"></p>
+    <p data-i18n="foot3"></p>
+  </div>
+</div>
+
+<script>
+(function(){
+const T = {
+de:{
+  h1:"Hauskauf Dénia",
+  sub:"Wann könnt ihr zu zweit die Anzahlung für eine 3-Zimmer-Wohnung in oder um Dénia stemmen, und gibt euch die Bank die Hypothek? Alle Werte lassen sich ändern und bleiben in diesem Browser gespeichert.",
+  reset:"Auf Startwerte zurücksetzen", exportBtn:"Für Gesamtplan kopieren", exportOk:"Code kopiert. Jetzt im Rechner „Auto & Haus“ einfügen.", exportFail:"Automatisch kopieren ging nicht. Markiere den Code und kopiere ihn:",
+  pSave:"Was ihr pro Monat spart", who1:"Du", who2:"Deine Freundin", who3:"Gemeinsam",
+  net:"Nettogehalt", exp:"Ausgaben", exp1Hint:"Supermarkt 100 + Sprit 75 + Sonstiges. Ohne Miete.",
+  etf:"ETF-Sparplan", play:"Spielgeld", etfIn:"ETF-Sparplan aufs Haus umleiten (statt weiter in ETFs)",
+  exp2Hint:"Ohne Führerschein kein Sprit, Supermarkt evtl. komplett über ihre Arbeit.",
+  start2:"Fängt an zu arbeiten in", uMonths:"Monaten", grow:"Gehälter steigen pro Jahr",
+  savings:"Schon gespart", yield:"Zinsen Tagesgeld", uPa:"% p.a.",
+  carMonthly:"Falls doch E-Auto: Kosten / Monat", carMonthlyHint:"Rate + Nebenkosten aus dem Auto-Rechner. Senkt Sparrate und Kreditrahmen.",
+  carDown:"Falls doch E-Auto: Anzahlung",
+  pFlat:"Die Wohnung", modeSqm:"Nach Ort & m²", modeListing:"Konkretes Inserat",
+  listName:"Welche Wohnung?", listNamePh:"z. B. Fotocasa, Dénia Centro, 3 Zi.",
+  listing:"Kaufpreis laut Inserat", listingHint:"Den Preis aus Fotocasa oder Idealista eintragen. Der Preisanstieg unten zeigt, was eine vergleichbare Wohnung später kosten dürfte.",
+  place:"Ort", sqm:"Größe", sqmHint:"3 Zimmer: meist 80–100 m².", ppsqm:"Preis pro m²",
+  priceGrow:"Preisanstieg pro Jahr", priceGrowHint:"Marina Alta zuletzt +10 % und mehr. Wenn die Preise schneller steigen als eure Ersparnisse, rückt das Ziel weg.",
+  reserve:"Reserve nach dem Kauf", reserveHint:"Notgroschen + Möbel, Umzug.",
+  upkeep:"IBI, Comunidad, Versicherung", uPerMonth:"€/Monat", rent:"Aktuelle Miete (fällt weg)",
+  pLoan:"Hypothek & Förderung", scen:"Förderweg / politisches Szenario",
+  mrate:"Hypothekenzins", mrateHint:"Euribor Okt. 2026: ca. 3,24 %. Fix meist 3–4 %.",
+  years:"Laufzeit", uYears:"Jahre", dti:"Max. Rate in % vom Netto", dtiHint:"Spanische Banken: meist 30–35 % für alle Kreditraten zusammen.",
+  fees:"Notar, Register, Gestoría, Gutachten", uOfPrice:"% vom Preis",
+  tcMode:"Tu Casa: wann zurückzahlen?", tcModeHint:"Laut Erlass: Aufschub, solange die Hypothek läuft (max. 30 Jahre), danach bis zu 10 Jahre zinsfrei zurückzahlen. Wie Banken das bei der Kreditprüfung werten, ist noch offen. „Sofort“ ist die vorsichtige Variante.",
+  tcDefer:"Erst nach der Hypothek (Aufschub)", tcNow:"Sofort über 10 Jahre (vorsichtig)",
+  rTcLater:"Tu-Casa-Rückzahlung nach der Hypothek", rTcLaterNote:"ab Jahr {0}: {1} pro Monat, 10 Jahre lang, oder beim Verkauf auf einmal",
+  u35:"Ihr seid beide unter 35 (ITP 6 % bis 180.000 €, sonst 8 % statt 9 %)",
+  rHead:"Wann könnt ihr kaufen?", kWhenL:"Kaufbereit", kPriceL:"Preis dann", kRateL:"Monatliche Rate",
+  legSav:"Eure Ersparnisse", legNeed:"Benötigtes Eigenkapital + Reserve", chartAria:"Ersparnisse und benötigtes Eigenkapital über die Zeit",
+  tPlaces:"Orte im Vergleich", tPlacesHint:"Gleiche Größe, gleicher Förderweg, plus dein Inserat. Tippe eine Zeile an, um sie oben zu übernehmen.",
+  thPlace:"Ort", thPriceToday:"Preis heute", thEquity:"Eigenkapital nötig", thReady:"Kaufbereit", thRate:"Rate / Monat",
+  tScens:"Förderwege im Vergleich", tScensHint:"Für die gewählte Wohnung. Tippe eine Zeile an, um den Weg oben zu übernehmen.",
+  thWay:"Weg", thStatus:"Status", thBankPct:"Bank bis", thMonthly:"Wohnkosten / Monat",
+  infoHead:"Förderung & Politik: Stand 4. November 2026",
+  infoTuCasa:"Bis 20 % des Preises, max. 50.000 €, zinsfrei über das ICO, Rückzahlung in bis zu 10 Jahren. Der erste Erlass scheiterte am 2. Oktober im Kongress, die Regierung hat ihn am 6. Oktober neu beschlossen. Er muss noch bestätigt werden, und Einkommens- und Preisgrenzen fehlen. Beantragen kann man ihn noch nicht. Haken: Die Wohnung darf später nie teurer als Kaufpreis + Inflation verkauft werden.",
+  infoIco:"Staatliche Bürgschaft, damit die Bank bis 95 % finanziert. Für Erstkäufer bis 35 Jahre (oder mit Kindern), Einkommensgrenze in Alicante 46.200 €. Gilt bis Ende 2027. Kein Geschenk: Ihr leiht euch mehr und zahlt höhere Raten.",
+  infoIvfH:"Aval der Generalitat (IVF)",
+  infoIvf:"Regionale Bürgschaft, Finanzierung bis 100 % möglich. Bis 45 Jahre, mindestens 2 Jahre durchgehend in der Comunitat Valenciana gemeldet, keine andere Wohnung. Steuern und Notar müsst ihr trotzdem selbst bezahlen.",
+  infoElecH:"Wahl am 29. November",
+  infoElec:"Der PP verspricht u. a. 60 % weniger IVA/ITP beim Kauf für junge Leute, Bürgschaften bis 100 % und ein Sparkonto „Hucha Hogar Joven“. PP, Vox und Junts stimmten gegen den ersten Tu-Casa-Erlass. Vox forderte im Juni Vorrang für Spanier bei Wohnhilfen; das Plenum lehnte das ab. PSOE und Sumar setzen auf Tu Casa, ICO-Bürgschaft und mehr öffentliche Wohnungen. Alles davon sind Pläne, keine Gesetze. Die ITP setzt außerdem die Generalitat fest, nicht Madrid.",
+  foot1:"<b>So wird gerechnet:</b> Monat für Monat wachsen eure Ersparnisse (Sparrate + Tagesgeldzinsen), gleichzeitig steigt der Wohnungspreis. „Kaufbereit“ ist der erste Monat, in dem eure Ersparnisse Eigenanteil + Grunderwerbsteuer (ITP) + Nebenkosten + Reserve decken. <b>Die Bank leiht den kleineren von zwei Beträgen:</b> einen Anteil vom Preis (80 %, mit Bürgschaft mehr) und das, was euer Einkommen trägt (alle Kreditraten zusammen höchstens 35 % vom Netto). Ist das Einkommen die Grenze, müsst ihr den Rest mit Eigenkapital zahlen; das ist eingerechnet. Das Gehalt deiner Freundin zählt ab dem Monat, in dem sie anfängt. Banken wollen aber oft einen unbefristeten Vertrag und eine überstandene Probezeit sehen.",
+  foot2:"<b>Preise pro m²:</b> Dénia ca. 3.600 € (RealAdvisor, Okt. 2026). Übrige Orte: Idealista, Ende 2025, daher eher etwas höher ansetzen. Durchschnittswerte über alle Wohnungen; Zustand, Lage und Strandnähe machen große Unterschiede.",
+  foot3:"Das ist eine Planungshilfe, keine Finanz- oder Rechtsberatung. Vor einer Entscheidung lohnt sich ein Gespräch mit einer Bank oder einem unabhängigen Hypothekenvermittler.",
+  months:["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"],
+  now:"Jetzt", instant:"sofort", y:"J.", m:"Mon.", today:"heute", inDur:"in {0}", alreadyToday:"Ihr hättet es heute schon",
+  ofNet:"{0} % vom Netto", over20:"über 20 J.", notReach:"mit diesen Werten nicht erreichbar", listingTag:"Inserat", yourListing:"Dein Inserat",
+  rPrice:"Kaufpreis zum Kaufzeitpunkt", rPriceToday:" (heute {0})", rItp:"Grunderwerbsteuer ITP ({0} %)", rFees:"Notar, Register, Gestoría",
+  rLimPrice:"Bank-Grenze 1: {0} % vom Preis", rLimInc:"Bank-Grenze 2: was euer Einkommen trägt", rLimIncNote:"{0} % von {1} Netto{2} = max. {3} Rate",
+  rLimIncTc:" − {0} Tu Casa", rLimIncCar:" − {0} Auto",
+  rLoan:"Hypothek (der kleinere Wert)", rTc:"0-%-Darlehen Tu Casa", rEquity:"Euer Eigenkapital dafür", rReserve:"Reserve, die übrig bleibt",
+  rPay:"Hypothekenrate ({0} J., {1} %)", rTcPay:"+ Tu-Casa-Rückzahlung ({0} J.)", rUpkeep:"+ IBI, Comunidad, Versicherung", rHousing:"Wohnkosten pro Monat", rLeft:"Bleibt danach frei (nach ETF & Spielgeld)",
+  limited:"Begrenzt",
+  mSave:"Gemeinsame Sparrate, sobald beide verdienen: {0} pro Monat (bis dahin {1}).",
+  mCapped:"Euer Einkommen begrenzt die Hypothek auf {0} statt {1}. Die Differenz müsst ihr selbst ansparen; das ist eingerechnet und verschiebt den Termin.",
+  mCappedTc:" Grund ist vor allem Tu Casa: Die Rückzahlung von {0} pro Monat zählt bei der Bank als Kreditrate und verkleinert die mögliche Hypothek um etwa {1}. Mit Aufschub bis nach der Hypothek (Feld „Tu Casa: wann zurückzahlen?“) fällt diese Rate weg.",
+  mTc:"Tu Casa gibt es noch nicht. Rechnet damit nur als Bonus, nicht als Plan.",
+  mPp:"Das ist ein Wahlversprechen. Ob und wie es kommt, ist offen.",
+  mGrow:"Die Preise steigen in eurer Annahme schneller ({0} %) als eure Gehälter ({1} %). Je länger ihr wartet, desto größer wird die Hypothek im Verhältnis zum Einkommen.",
+  mJob:"Die Bank will meist sehen, dass deine Freundin schon eine Weile fest angestellt ist (Probezeit vorbei, idealerweise unbefristet). Plant ein paar Monate Puffer ein.",
+  mNone:"Mit diesen Annahmen holt ihr den Preis nicht ein, meist weil die Bank wegen des Einkommens nicht genug leiht. Probiert einen günstigeren Ort, weniger m², eine längere Laufzeit oder einen langsameren Preisanstieg.",
+  custom:"Eigener Wert", customNote:"Trag den Preis pro m² selbst ein.",
+  pn_denia:"RealAdvisor, Okt. 2026 (+11 % in 12 Monaten)", pn_ide:"Idealista, Ende 2025", pn_ide48:"Idealista, Dez. 2025 (+48 % im Jahr 2025)",
+  s_std:"Normale Hypothek (80 %)", ss_std:"verfügbar", sh_std:"Ohne Hilfe: 20 % Eigenanteil plus Steuern und Nebenkosten selbst.",
+  s_ico:"Aval ICO (bis 95 %)", ss_ico:"verfügbar, bis 35 J.", sh_ico:"Nur für Erstkäufer bis 35 Jahre. Die Bank entscheidet trotzdem nach eurem Einkommen.",
+  s_ivf:"Aval Generalitat IVF (bis 100 %)", ss_ivf:"verfügbar, bis 45 J.", sh_ivf:"Regional, bis 45 Jahre, mindestens 2 Jahre in der Comunitat Valenciana gemeldet. Steuern und Notar zahlt ihr selbst.",
+  s_tucasa:"Tu Casa: 80 % Bank + 0-%-Darlehen", ss_tucasa:"noch nicht beantragbar", sh_tucasa:"Plan der aktuellen Regierung: bis 20 % (max. 50.000 €) zinsfrei. Noch nicht bestätigt, Bedingungen offen, späterer Verkaufspreis gedeckelt. Die Rückzahlung zählt bei der Bank als Kreditrate.",
+  s_pp:"PP-Wahlprogramm: 100 % + 60 % weniger ITP", ss_pp:"nur Wahlversprechen", sh_pp:"Annahme: Steuerrabatt nur für junge Käufer (Haken unter 35 setzen). Details und Umsetzung unklar; die ITP legt die Generalitat fest."
+},
+es:{
+  h1:"Comprar casa en Dénia",
+  sub:"¿Cuándo podréis pagar entre los dos la entrada de un piso de 3 habitaciones en Dénia o alrededores, y os dará el banco la hipoteca? Todos los valores se pueden cambiar y se guardan en este navegador.",
+  reset:"Volver a los valores iniciales", exportBtn:"Copiar para el plan conjunto", exportOk:"Código copiado. Pégalo en la calculadora «Auto & Haus».", exportFail:"No se pudo copiar automáticamente. Selecciona el código y cópialo:",
+  pSave:"Lo que ahorráis cada mes", who1:"Él", who2:"Ella", who3:"Juntos",
+  net:"Sueldo neto", exp:"Gastos", exp1Hint:"Supermercado 100 + gasolina 75 + otros. Sin alquiler.",
+  etf:"Ahorro mensual en ETF", play:"Dinero «para jugar»", etfIn:"Destinar el ahorro en ETF a la casa (en vez de seguir invirtiendo)",
+  exp2Hint:"Sin carnet no hay gasolina; quizá el súper lo cubra entero con su trabajo.",
+  start2:"Empieza a trabajar en", uMonths:"meses", grow:"Subida de sueldos al año",
+  savings:"Ya ahorrado", yield:"Interés cuenta remunerada", uPa:"% anual",
+  carMonthly:"Si al final hay coche: coste / mes", carMonthlyHint:"Cuota + gastos, del calculador del coche. Reduce el ahorro y lo que presta el banco.",
+  carDown:"Si al final hay coche: entrada",
+  pFlat:"La vivienda", modeSqm:"Por zona y m²", modeListing:"Anuncio concreto",
+  listName:"¿Qué piso?", listNamePh:"p. ej. Fotocasa, Dénia centro, 3 hab.",
+  listing:"Precio del anuncio", listingHint:"Pon el precio de Fotocasa o Idealista. La subida de precios de abajo muestra lo que costaría un piso parecido más adelante.",
+  place:"Zona", sqm:"Tamaño", sqmHint:"3 habitaciones: suele ser 80–100 m².", ppsqm:"Precio por m²",
+  priceGrow:"Subida de precios al año", priceGrowHint:"En la Marina Alta, últimamente +10 % o más. Si los precios suben más rápido que vuestros ahorros, el objetivo se aleja.",
+  reserve:"Colchón tras la compra", reserveHint:"Fondo de emergencia + muebles y mudanza.",
+  upkeep:"IBI, comunidad, seguro", uPerMonth:"€/mes", rent:"Alquiler actual (desaparece)",
+  pLoan:"Hipoteca y ayudas", scen:"Ayuda / escenario político",
+  mrate:"Tipo de interés", mrateHint:"Euríbor oct. 2026: aprox. 3,24 %. Fijo, normalmente 3–4 %.",
+  years:"Plazo", uYears:"años", dti:"Cuota máx. en % del neto", dtiHint:"Los bancos suelen aceptar un 30–35 % para todas las cuotas juntas.",
+  fees:"Notaría, registro, gestoría, tasación", uOfPrice:"% del precio",
+  tcMode:"Tu Casa: ¿cuándo se devuelve?", tcModeHint:"Según el decreto: carencia mientras dure la hipoteca (máx. 30 años) y luego hasta 10 años para devolverlo sin intereses. Aún no se sabe cómo lo valorarán los bancos. «Desde ya» es la opción prudente.",
+  tcDefer:"Después de la hipoteca (carencia)", tcNow:"Desde ya, en 10 años (prudente)",
+  rTcLater:"Devolución Tu Casa tras la hipoteca", rTcLaterNote:"desde el año {0}: {1} al mes durante 10 años, o de golpe al vender",
+  u35:"Los dos tenéis menos de 35 años (ITP 6 % hasta 180.000 €, si no 8 % en vez de 9 %)",
+  rHead:"¿Cuándo podéis comprar?", kWhenL:"Listos para comprar", kPriceL:"Precio entonces", kRateL:"Cuota mensual",
+  legSav:"Vuestros ahorros", legNeed:"Entrada necesaria + colchón", chartAria:"Ahorros y entrada necesaria a lo largo del tiempo",
+  tPlaces:"Comparativa de zonas", tPlacesHint:"Mismo tamaño y misma ayuda, más tu anuncio. Toca una fila para usarla arriba.",
+  thPlace:"Zona", thPriceToday:"Precio hoy", thEquity:"Ahorro necesario", thReady:"Listos", thRate:"Cuota / mes",
+  tScens:"Comparativa de ayudas", tScensHint:"Para la vivienda elegida. Toca una fila para usar esa opción arriba.",
+  thWay:"Opción", thStatus:"Estado", thBankPct:"Banco hasta", thMonthly:"Vivienda / mes",
+  infoHead:"Ayudas y política: a 4 de noviembre de 2026",
+  infoTuCasa:"Hasta el 20 % del precio, máx. 50.000 €, sin intereses a través del ICO, a devolver en hasta 10 años. El primer decreto cayó en el Congreso el 2 de octubre; el Gobierno lo aprobó de nuevo el 6 de octubre. Falta su convalidación y aún no hay límites de renta ni de precio. Todavía no se puede pedir. Ojo: el piso nunca se podrá vender por más del precio de compra + IPC.",
+  infoIco:"Aval del Estado para que el banco financie hasta el 95 %. Para primera vivienda hasta 35 años (o con hijos), límite de renta en Alicante 46.200 €. Vigente hasta finales de 2027. No es un regalo: pedís más prestado y la cuota sube.",
+  infoIvfH:"Aval de la Generalitat (IVF)",
+  infoIvf:"Aval autonómico, financiación de hasta el 100 %. Hasta 45 años, al menos 2 años empadronados de forma continuada en la Comunitat Valenciana y sin otra vivienda. Impuestos y notaría los pagáis vosotros.",
+  infoElecH:"Elecciones del 29 de noviembre",
+  infoElec:"El PP promete, entre otras cosas, rebajar un 60 % el IVA/ITP a jóvenes compradores, avales de hasta el 100 % y una cuenta de ahorro «Hucha Hogar Joven». PP, Vox y Junts votaron en contra del primer decreto de Tu Casa. En junio Vox pidió prioridad para españoles en las ayudas a la vivienda; el pleno lo rechazó. PSOE y Sumar apuestan por Tu Casa, el aval ICO y más vivienda pública. Todo son propuestas, no leyes. Además, el ITP lo fija la Generalitat, no Madrid.",
+  foot1:"<b>Cómo se calcula:</b> mes a mes crecen vuestros ahorros (ahorro mensual + intereses) y a la vez sube el precio del piso. «Listos para comprar» es el primer mes en que los ahorros cubren la entrada + ITP + gastos + colchón. <b>El banco presta la menor de dos cantidades:</b> un porcentaje del precio (80 %, más con aval) y lo que soportan vuestros ingresos (todas las cuotas juntas, como mucho el 35 % del neto). Si el límite son los ingresos, el resto lo pagáis con ahorro propio; ya está incluido. Su sueldo cuenta desde el mes en que empieza a trabajar, aunque los bancos suelen pedir contrato indefinido y el periodo de prueba superado.",
+  foot2:"<b>Precios por m²:</b> Dénia aprox. 3.600 € (RealAdvisor, oct. 2026). Resto de zonas: Idealista, finales de 2025, así que conviene calcular algo más alto. Son medias de todos los pisos; el estado, la ubicación y la cercanía a la playa cambian mucho el precio.",
+  foot3:"Es una ayuda para planificar, no asesoramiento financiero ni jurídico. Antes de decidir, conviene hablar con un banco o un bróker hipotecario independiente.",
+  months:["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"],
+  now:"Ahora", instant:"ya", y:"a", m:"m", today:"hoy", inDur:"en {0}", alreadyToday:"Ya podríais hoy",
+  ofNet:"{0} % del neto", over20:"más de 20 años", notReach:"no se alcanza con estos valores", listingTag:"Anuncio", yourListing:"Tu anuncio",
+  rPrice:"Precio en el momento de compra", rPriceToday:" (hoy {0})", rItp:"ITP ({0} %)", rFees:"Notaría, registro, gestoría",
+  rLimPrice:"Límite del banco 1: {0} % del precio", rLimInc:"Límite del banco 2: lo que soportan vuestros ingresos", rLimIncNote:"{0} % de {1} netos{2} = cuota máx. {3}",
+  rLimIncTc:" − {0} Tu Casa", rLimIncCar:" − {0} coche",
+  rLoan:"Hipoteca (la menor de las dos)", rTc:"Préstamo Tu Casa al 0 %", rEquity:"Vuestra aportación", rReserve:"Colchón que queda",
+  rPay:"Cuota hipoteca ({0} años, {1} %)", rTcPay:"+ Devolución Tu Casa ({0} años)", rUpkeep:"+ IBI, comunidad, seguro", rHousing:"Gasto de vivienda al mes", rLeft:"Queda libre (tras ETF y dinero para jugar)",
+  limited:"Limita",
+  mSave:"Ahorro conjunto cuando cobréis los dos: {0} al mes (hasta entonces {1}).",
+  mCapped:"Vuestros ingresos limitan la hipoteca a {0} en vez de {1}. La diferencia la tenéis que ahorrar vosotros; ya está incluido y retrasa la fecha.",
+  mCappedTc:" El motivo principal es Tu Casa: su devolución de {0} al mes cuenta para el banco como cuota y reduce la hipoteca posible en unos {1}. Con carencia hasta después de la hipoteca (campo «Tu Casa: ¿cuándo se devuelve?») esa cuota desaparece.",
+  mTc:"Tu Casa todavía no existe. Contad con él solo como extra, no como plan.",
+  mPp:"Es una promesa electoral. Si llega y cómo, está por ver.",
+  mGrow:"Según vuestra hipótesis, los precios suben más rápido ({0} %) que los sueldos ({1} %). Cuanto más esperéis, mayor será la hipoteca respecto a vuestros ingresos.",
+  mJob:"El banco suele querer ver que ella lleva un tiempo con contrato (periodo de prueba superado, mejor indefinido). Dejad unos meses de margen.",
+  mNone:"Con estas hipótesis no alcanzáis el precio, normalmente porque el banco no presta lo suficiente con vuestros ingresos. Probad una zona más barata, menos m², un plazo más largo o una subida de precios más lenta.",
+  custom:"Valor propio", customNote:"Pon tú el precio por m².",
+  pn_denia:"RealAdvisor, oct. 2026 (+11 % en 12 meses)", pn_ide:"Idealista, finales de 2025", pn_ide48:"Idealista, dic. 2025 (+48 % en 2025)",
+  s_std:"Hipoteca normal (80 %)", ss_std:"disponible", sh_std:"Sin ayuda: 20 % de entrada más impuestos y gastos de vuestro bolsillo.",
+  s_ico:"Aval ICO (hasta 95 %)", ss_ico:"disponible, hasta 35 años", sh_ico:"Solo primera vivienda y hasta 35 años. El banco decide igualmente según vuestros ingresos.",
+  s_ivf:"Aval Generalitat IVF (hasta 100 %)", ss_ivf:"disponible, hasta 45 años", sh_ivf:"Autonómico, hasta 45 años, mínimo 2 años empadronados en la Comunitat Valenciana. Impuestos y notaría los pagáis vosotros.",
+  s_tucasa:"Tu Casa: 80 % banco + préstamo al 0 %", ss_tucasa:"aún no se puede pedir", sh_tucasa:"Plan del Gobierno actual: hasta el 20 % (máx. 50.000 €) sin intereses. Sin convalidar, condiciones abiertas y precio de reventa limitado. Para el banco, la devolución cuenta como cuota.",
+  s_pp:"Programa del PP: 100 % + 60 % menos ITP", ss_pp:"solo promesa electoral", sh_pp:"Supuesto: rebaja fiscal solo para jóvenes (marca «menos de 35»). Detalles y aplicación inciertos; el ITP lo fija la Generalitat."
+}};
+
+const PLACES = [
+  {id:"denia", name:"Dénia", ppsqm:3601, note:"pn_denia"},
+  {id:"poblets", name:"Els Poblets", ppsqm:2931, note:"pn_ide"},
+  {id:"verger", name:"El Verger", ppsqm:3112, note:"pn_ide48"},
+  {id:"pedreguer", name:"Pedreguer", ppsqm:2401, note:"pn_ide"},
+  {id:"ondara", name:"Ondara", ppsqm:1534, note:"pn_ide"},
+  {id:"pego", name:"Pego", ppsqm:1364, note:"pn_ide48"},
+  {id:"custom", name:null, ppsqm:null, note:"customNote"}
+];
+const SCENS = [
+  {id:"std", st:"ok", ltv:0.80, tuCasa:false, ppTax:false},
+  {id:"ico", st:"ok", ltv:0.95, tuCasa:false, ppTax:false},
+  {id:"ivf", st:"ok", ltv:1.0, tuCasa:false, ppTax:false},
+  {id:"tucasa", st:"warn", ltv:0.80, tuCasa:true, ppTax:false},
+  {id:"pp", st:"warn", ltv:1.0, tuCasa:false, ppTax:true}
+];
+const DEFAULTS = {inc1:1625, exp1:175, etf:200, play:200, etfIn:false,
+  inc2:1500, exp2:150, start2:2, grow:2,
+  savings:8000, yield:2, carMonthly:0, carDown:0,
+  place:"pedreguer", sqm:90, ppsqm:2401, priceGrow:5, reserve:6000, upkeep:120, rent:0,
+  scen:"std", mrate:3.4, years:30, dti:35, fees:2, tcMode:"defer", u35:false, mode:"sqm", listing:250000, listName:""};
+const KEY = "hauskauf-denia-v1", LKEY = "hauskauf-denia-lang";
+let S = Object.assign({}, DEFAULTS);
+try{ const raw = localStorage.getItem(KEY); if(raw) Object.assign(S, JSON.parse(raw)); }catch(e){}
+let LANG = "de";
+try{ LANG = localStorage.getItem(LKEY) || ((navigator.language||"").toLowerCase().startsWith("es") ? "es" : "de"); }catch(e){}
+if(!T[LANG]) LANG = "de";
+
+const $ = id => document.getElementById(id);
+const t = (k, ...a) => { let s = (T[LANG][k] ?? T.de[k] ?? k); a.forEach((v,i)=> s = s.split("{"+i+"}").join(v)); return s; };
+const fmtN = (v, d=0) => Number(v).toLocaleString("de-DE",{maximumFractionDigits:d});
+const eur = v => (v<0?"−":"") + fmtN(Math.abs(Math.round(v))) + " €";
+const kEur = v => fmtN(Math.round(v/1000)) + "k €";
+const esc = s => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const NUMS = ["inc1","exp1","etf","play","inc2","exp2","start2","grow","savings","yield","carMonthly","carDown","listing","sqm","ppsqm","priceGrow","reserve","upkeep","rent","mrate","years","dti","fees"];
+const BOOLS = ["etfIn","u35"];
+const HORIZON = 240;
+
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i18n]").forEach(e=> e.textContent = t(e.dataset.i18n));
+  document.querySelectorAll("[data-i18n-html]").forEach(e=> e.innerHTML = t(e.dataset.i18nHtml));
+  document.querySelectorAll("[data-i18n-ph]").forEach(e=> e.placeholder = t(e.dataset.i18nPh));
+  $("chart").setAttribute("aria-label", t("chartAria"));
+  $("langDe").checked = LANG==="de"; $("langEs").checked = LANG==="es";
+  $("place").innerHTML = PLACES.map(p=>`<option value="${p.id}">${p.name||t("custom")}${p.ppsqm?" · ca. "+fmtN(p.ppsqm)+" €/m²":""}</option>`).join("");
+  $("scen").innerHTML = SCENS.map(s=>`<option value="${s.id}">${t("s_"+s.id)}</option>`).join("");
+  $("tcMode").innerHTML = `<option value="defer">${t("tcDefer")}</option><option value="now">${t("tcNow")}</option>`;
+  $("place").value = S.place; $("scen").value = S.scen; $("tcMode").value = S.tcMode;
+}
+function setLang(l){ LANG=l; try{ localStorage.setItem(LKEY,l); }catch(e){} applyLang(); update(); }
+$("langDe").addEventListener("change", ()=> setLang("de"));
+$("langEs").addEventListener("change", ()=> setLang("es"));
+
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function fill(){
+  NUMS.forEach(k=> $(k).value = S[k]);
+  $("playR").value = S.play;
+  BOOLS.forEach(k=> $(k).checked = !!S[k]);
+  $("place").value = S.place; $("scen").value = S.scen; $("tcMode").value = S.tcMode;
+  $("listName").value = S.listName || "";
+  $("modeSqm").checked = S.mode!=="listing"; $("modeListing").checked = S.mode==="listing";
+}
+function setMode(m){ S.mode=m; $("modeSqm").checked = m!=="listing"; $("modeListing").checked = m==="listing"; update(); }
+$("modeSqm").addEventListener("change", ()=> setMode("sqm"));
+$("modeListing").addEventListener("change", ()=> setMode("listing"));
+$("listName").addEventListener("input", e=>{ S.listName = e.target.value; update(); });
+NUMS.forEach(k=> $(k).addEventListener("input", e=>{ const v=parseFloat(e.target.value); S[k]=isNaN(v)?0:v;
+  if(k==="play") $("playR").value=S[k];
+  if(k==="ppsqm"){ const p=PLACES.find(x=>x.id===S.place); if(p && p.ppsqm!==S.ppsqm){ S.place="custom"; $("place").value="custom"; } }
+  update(); }));
+$("playR").addEventListener("input", e=>{ S.play=parseFloat(e.target.value); $("play").value=S.play; update(); });
+BOOLS.forEach(k=> $(k).addEventListener("change", e=>{ S[k]=e.target.checked; update(); }));
+$("place").addEventListener("change", e=> setPlace(e.target.value));
+$("scen").addEventListener("change", e=>{ S.scen=e.target.value; update(); });
+$("tcMode").addEventListener("change", e=>{ S.tcMode=e.target.value; update(); });
+$("reset").addEventListener("click", ()=>{ S=Object.assign({},DEFAULTS); fill(); update(); });
+function setPlace(id){ S.place=id; S.mode="sqm"; $("modeSqm").checked=true; $("modeListing").checked=false;
+  const p=PLACES.find(x=>x.id===id); if(p && p.ppsqm){ S.ppsqm=p.ppsqm; $("ppsqm").value=S.ppsqm; } $("place").value=id; update(); }
+
+function annuityFactor(ratePct, years){ const r=ratePct/100/12, n=years*12; return r===0? n : (1-Math.pow(1+r,-n))/r; }
+function itpRate(price, scen){
+  let x = 0.09;
+  if(S.u35){ x = price<=180000 ? 0.06 : 0.08; }
+  if(scen.ppTax && S.u35) x *= 0.4;
+  return x;
+}
+const householdIncome = m => (S.inc1 + (m>=S.start2 ? S.inc2 : 0)) * Math.pow(1+S.grow/100, Math.floor(m/12));
+function monthlySaving(m){
+  const g = Math.pow(1+S.grow/100, Math.floor(m/12));
+  const me = S.inc1*g - S.exp1 - S.play - (S.etfIn ? 0 : S.etf);
+  const her = m>=S.start2 ? (S.inc2*g - S.exp2) : 0;
+  return me + her - S.carMonthly - S.rent;
+}
+function needAt(P, m, scen){
+  const itp = itpRate(P, scen);
+  const costs = P*(itp + S.fees/100);
+  const tc = scen.tuCasa ? Math.min(0.2*P, 50000) : 0;
+  const tcMonthly = S.tcMode==="now" ? tc/120 : 0;
+  const af = annuityFactor(S.mrate, S.years);
+  const inc = householdIncome(m);
+  const capRate = Math.max(0, S.dti/100*inc - S.carMonthly - tcMonthly);
+  const loanByIncome = capRate*af;
+  const loanByPrice = scen.ltv*P;
+  const loan = Math.min(loanByPrice, loanByIncome);
+  const equity = P + costs - loan - tc;
+  return {itp, costs, tc, tcMonthly, inc, capRate, loanByIncome, loanByPrice, loan, equity, pay: loan/af,
+    loanCapped: loanByIncome < loanByPrice - 1, tcCost: tcMonthly*af, need: equity + S.reserve};
+}
+function simulate(P0, scen){
+  let sav = S.savings - S.carDown;
+  const series = []; let hit = null;
+  for(let m=0; m<=HORIZON; m++){
+    const P = P0*Math.pow(1+S.priceGrow/100, m/12);
+    const n = needAt(P, m, scen);
+    series.push({t:m, sav, need:n.need, P});
+    if(hit===null && sav >= n.need) hit = {t:m, P, n, sav};
+    sav = sav*(1+S.yield/100/12) + monthlySaving(m);
+  }
+  return {series, hit};
+}
+function whenLabel(m){
+  if(m===0) return t("now");
+  const d = new Date(2026, 10 + m, 1);
+  return t("months")[d.getMonth()] + " " + d.getFullYear();
+}
+function durLabel(m){
+  if(m===0) return t("instant");
+  const y=Math.floor(m/12), mo=m%12;
+  return [y? y+" "+t("y") : "", mo? mo+" "+t("m") : ""].filter(Boolean).join(" ");
+}
+function niceStep(range){ const raw=range/5; const p=Math.pow(10,Math.floor(Math.log10(raw||1))); const n=raw/p; return (n<1.5?1:n<3?2:n<7?5:10)*p; }
+function drawChart(series, hit){
+  const W=640,H=260,L=56,R=12,T0=12,B=30;
+  const lim = hit ? Math.min(HORIZON, Math.max(36, Math.ceil((hit.t+12)/12)*12)) : 120;
+  const data = series.filter(d=>d.t <= lim);
+  const maxT = data[data.length-1].t;
+  const maxY = Math.max(...data.map(d=>Math.max(d.sav,d.need)))*1.05 || 1;
+  const minY = Math.min(0, ...data.map(d=>d.sav));
+  const x = v => L + (v/maxT)*(W-L-R);
+  const y = v => T0 + (1-(v-minY)/(maxY-minY))*(H-T0-B);
+  const step = niceStep(maxY-minY);
+  let g = "";
+  for(let v=Math.ceil(minY/step)*step; v<=maxY; v+=step){
+    g += `<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${fmtN(Math.round(v/1000))}k</text>`;
+  }
+  const yStep = maxT>96 ? 24 : 12;
+  for(let m=0;m<=maxT;m+=yStep){ g += `<text x="${x(m)}" y="${H-10}" text-anchor="middle">${m===0?t("today"):"+"+(m/12)+" "+t("y")}</text>`; }
+  const path = key => data.map((d,i)=>(i?"L":"M")+x(d.t).toFixed(1)+" "+y(d[key]).toFixed(1)).join(" ");
+  const area = path("sav") + ` L${x(maxT)} ${y(Math.max(minY,0))} L${x(0)} ${y(Math.max(minY,0))} Z`;
+  let mark = "";
+  if(hit && hit.t<=maxT){
+    mark = `<line x1="${x(hit.t)}" x2="${x(hit.t)}" y1="${T0}" y2="${H-B}" stroke="var(--ink)" stroke-dasharray="3 3" stroke-width="1"/>
+      <circle cx="${x(hit.t)}" cy="${y(hit.sav)}" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+      <text x="${Math.min(x(hit.t)+8, W-R-80)}" y="${T0+12}" style="fill:var(--ink);font-weight:600">${whenLabel(hit.t)}</text>`;
+  }
+  $("chart").innerHTML = g + `<path d="${area}" fill="var(--accent)" opacity="0.10"/>` +
+    `<path d="${path("need")}" fill="none" stroke="var(--need)" stroke-width="2.25"/>` +
+    `<path d="${path("sav")}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>` + mark;
+}
+
+function update(){
+  save();
+  const scen = SCENS.find(s=>s.id===S.scen) || SCENS[0];
+  const place = PLACES.find(p=>p.id===S.place);
+  $("placeHint").textContent = place ? t(place.note) : "";
+  $("scenHint").textContent = t("sh_"+scen.id);
+  const listing = S.mode==="listing";
+  ["fListName","fListing"].forEach(id=> $(id).hidden = !listing);
+  ["fPlace","fSqm","fPpsqm"].forEach(id=> $(id).hidden = listing);
+  const listLabel = (S.listName||"").trim() || t("yourListing");
+  const P0 = listing ? S.listing : S.sqm * S.ppsqm;
+  const {series, hit} = simulate(P0, scen);
+  drawChart(series, hit);
+  const msgs = [];
+  if(hit){
+    const n = hit.n;
+    $("kWhen").textContent = whenLabel(hit.t);
+    $("kWhenS").textContent = hit.t===0 ? t("alreadyToday") : t("inDur", durLabel(hit.t));
+    $("kPrice").textContent = kEur(hit.P);
+    $("kPriceS").textContent = t("today") + " " + kEur(P0) + " · " + (listing ? listLabel : S.sqm + " m²");
+    const total = n.pay + n.tcMonthly;
+    $("kRate").textContent = eur(total);
+    $("kRateS").textContent = t("ofNet", Math.round(total/n.inc*100));
+    const ded = (n.tcMonthly ? t("rLimIncTc", eur(n.tcMonthly)) : "") + (S.carMonthly ? t("rLimIncCar", eur(S.carMonthly)) : "");
+    const limTag = `<span class="pill warn" style="margin-left:6px">${t("limited")}</span>`;
+    const rows = [
+      [t("rPrice") + (hit.t>0 && S.priceGrow ? t("rPriceToday", eur(P0)) : ""), eur(hit.P)],
+      [t("rItp", fmtN(n.itp*100,1)), eur(hit.P*n.itp)],
+      [t("rFees"), eur(hit.P*S.fees/100)],
+      [esc(t("rLimPrice", Math.round(scen.ltv*100))) + (!n.loanCapped ? limTag : ""), eur(n.loanByPrice), "sub"],
+      [esc(t("rLimInc")) + (n.loanCapped ? limTag : "") + `<br><span class="hint">${esc(t("rLimIncNote", S.dti, eur(n.inc), ded, eur(n.capRate)))}</span>`, eur(n.loanByIncome), "sub"],
+      [t("rLoan"), eur(n.loan)],
+      scen.tuCasa ? [t("rTc"), eur(n.tc)] : null,
+      [t("rEquity"), eur(n.equity), "total"],
+      [t("rReserve"), eur(hit.sav - n.equity)],
+      [t("rPay", S.years, fmtN(S.mrate,2)), eur(n.pay)],
+      scen.tuCasa && n.tcMonthly>0 ? [t("rTcPay", 10), eur(n.tcMonthly)] : null,
+      [t("rUpkeep"), eur(S.upkeep)],
+      [t("rHousing"), eur(n.pay + n.tcMonthly + S.upkeep), "total"],
+      scen.tuCasa && n.tcMonthly===0 ? [esc(t("rTcLater")) + `<br><span class="hint">${esc(t("rTcLaterNote", S.years+1, eur(n.tc/120)))}</span>`, eur(n.tc), "sub"] : null,
+      [t("rLeft"), eur(n.inc - S.exp1 - S.exp2*(hit.t>=S.start2?1:0) - S.etf - S.play - S.carMonthly - (n.pay + n.tcMonthly + S.upkeep))]
+    ].filter(Boolean);
+    $("rows").innerHTML = rows.map(r=>`<div class="row ${r[2]||""}"><span>${r[2]==="sub" ? r[0] : esc(r[0])}</span><span class="num">${r[1]}</span></div>`).join("");
+    if(n.loanCapped){
+      let m = t("mCapped", eur(n.loan), eur(n.loanByPrice));
+      if(scen.tuCasa && n.tcMonthly>0) m += t("mCappedTc", eur(n.tcMonthly), eur(n.tcCost));
+      msgs.push(["warn", m]);
+    }
+    if(scen.st==="warn") msgs.push(["warn", scen.id==="tucasa" ? t("mTc") : t("mPp")]);
+    if(S.priceGrow > S.grow + 2) msgs.push(["warn", t("mGrow", fmtN(S.priceGrow,1), fmtN(S.grow,1))]);
+    if(hit.t>0 && hit.t < S.start2 + 6) msgs.push(["warn", t("mJob")]);
+  } else {
+    $("kWhen").textContent = t("over20");
+    $("kWhenS").textContent = t("notReach");
+    $("kPrice").textContent = kEur(P0); $("kPriceS").textContent = t("today") + (listing ? " · " + listLabel : "");
+    $("kRate").textContent = "–"; $("kRateS").textContent = "";
+    $("rows").innerHTML = "";
+    msgs.push(["bad", t("mNone")]);
+  }
+  msgs.unshift(["ok", t("mSave", eur(monthlySaving(Math.max(S.start2,0))), eur(monthlySaving(0)))]);
+  $("msgs").innerHTML = msgs.map(x=>`<div class="msg ${x[0]}">${esc(x[1])}</div>`).join("");
+
+  // Orte / Zonas
+  const readyCell = h => h ? `${whenLabel(h.t)} <span class="hint">(${durLabel(h.t)})</span>` : t("over20");
+  let listRow = "";
+  if(S.listing>0){
+    const h = simulate(S.listing, scen).hit; const n = needAt(S.listing, Math.max(S.start2,0), scen);
+    listRow = `<tr data-place="__listing" class="${listing?"cur":""}"><td>${esc(listLabel)}</td><td class="txt"><span class="hint">${t("listingTag")}</span></td><td>${eur(S.listing)}</td><td>${eur(n.equity)}</td><td class="txt">${readyCell(h)}</td><td>${h? eur(h.n.pay+h.n.tcMonthly) : "–"}</td></tr>`;
+  }
+  $("placeTable").querySelector("tbody").innerHTML = listRow + PLACES.filter(p=>p.ppsqm).map(p=>{
+    const P=S.sqm*p.ppsqm; const h=simulate(P, scen).hit; const n=needAt(P, Math.max(S.start2,0), scen);
+    return `<tr data-place="${p.id}" class="${!listing && p.id===S.place?"cur":""}"><td>${p.name}</td><td>${fmtN(p.ppsqm)}</td><td>${eur(P)}</td><td>${eur(n.equity)}</td><td class="txt">${readyCell(h)}</td><td>${h? eur(h.n.pay+h.n.tcMonthly) : "–"}</td></tr>`;
+  }).join("");
+  document.querySelectorAll("#placeTable tbody tr").forEach(tr=> tr.addEventListener("click", ()=> tr.dataset.place==="__listing" ? setMode("listing") : setPlace(tr.dataset.place)));
+
+  // Förderwege / Ayudas
+  $("scenTable").querySelector("tbody").innerHTML = SCENS.map(sc=>{
+    const h=simulate(P0, sc).hit; const n=needAt(P0, Math.max(S.start2,0), sc);
+    return `<tr data-scen="${sc.id}" class="${sc.id===S.scen?"cur":""}"><td>${t("s_"+sc.id)}</td><td class="txt"><span class="pill ${sc.st}">${t("ss_"+sc.id)}</span></td><td>${Math.round(sc.ltv*100)} %</td><td>${eur(n.equity)}</td><td class="txt">${readyCell(h)}</td><td>${h? eur(h.n.pay+h.n.tcMonthly+S.upkeep) : "–"}</td></tr>`;
+  }).join("");
+  document.querySelectorAll("#scenTable tbody tr").forEach(tr=> tr.addEventListener("click", ()=>{ S.scen=tr.dataset.scen; $("scen").value=S.scen; update(); }));
+}
+$("exportBtn").addEventListener("click", ()=>{
+  const data = Object.assign({t:"haus"}, S, {listName:(S.listName||"").trim()});
+  const code = "AH1:" + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  $("exportCode").value = code; $("exportBox").hidden = false;
+  const ok = ()=>{ $("exportMsg").textContent = t("exportOk"); };
+  const fail = ()=>{ $("exportMsg").textContent = t("exportFail"); $("exportCode").focus(); $("exportCode").select(); };
+  try{ navigator.clipboard.writeText(code).then(ok, fail); }catch(e){ fail(); }
+});
+applyLang(); fill(); update();
+})();
+</script>
+
+<script>
+if("serviceWorker" in navigator){ window.addEventListener("load", ()=> navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+</script>
+</body>
+</html>
